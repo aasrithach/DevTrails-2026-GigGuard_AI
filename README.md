@@ -11,10 +11,8 @@
 
 ## 📌 Quick Links
 
-- 🔗 GitHub Repository: *(this repo)*
-- 🎥 2-Minute Strategy Video: *(paste your link here)*
-- 🚀 Live Demo: *(optional)*
-
+- 🔗 GitHub Repository: https://github.com/aasrithach/DevTrails-2026-GigGuard_AI
+- 🎥 2-Minute Strategy Video: 
 ---
 
 ## 🧠 Problem We Are Solving
