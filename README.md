@@ -1,5 +1,5 @@
-# 🛡️ GigGuard AI — Zero-Touch Income Protection for India's Gig Workers
-
+# 🛡️ GigGuard AI
+### *"Disruption hits. We pay. You deliver."*
 > **GigGuard AI is a zero-touch, AI-driven parametric insurance 
 > system that protects gig workers' income in real time without 
 > requiring any manual claim process.**
