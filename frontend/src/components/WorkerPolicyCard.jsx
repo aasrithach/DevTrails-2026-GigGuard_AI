@@ -26,9 +26,15 @@ const WorkerPolicyCard = ({ policy, riskLevel }) => {
                         </span>
                     </div>
 
-                    <div className="relative z-10">
-                        <p className="text-xs text-textSecondary uppercase tracking-widest mb-1">Weekly Premium</p>
-                        <p className="text-4xl text-primary font-display font-bold">₹{policy.weeklyPremium}</p>
+                    <div className="relative z-10 flex justify-between items-end">
+                        <div>
+                            <p className="text-xs text-textSecondary uppercase tracking-widest mb-1">Weekly Premium</p>
+                            <p className="text-4xl text-primary font-display font-bold">₹{policy.weeklyPremium}</p>
+                        </div>
+                        <div className="text-right">
+                            <p className="text-[10px] text-textSecondary uppercase tracking-widest mb-1">Risk Score</p>
+                            <p className="text-xl text-sky-400 font-display font-bold">{policy.riskScore || '3.5'}</p>
+                        </div>
                     </div>
 
                     <div className="relative z-10 flex justify-between items-end">
@@ -61,6 +67,10 @@ const WorkerPolicyCard = ({ policy, riskLevel }) => {
                         <div className="flex justify-between items-center text-xs">
                             <span className="text-textSecondary">Zone</span>
                             <span className="font-bold text-primary">{policy.worker?.zone}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-xs">
+                            <span className="text-textSecondary">Risk Score</span>
+                            <span className="font-bold text-sky-400">{policy.riskScore || '3.5'}</span>
                         </div>
                         <div className="flex justify-between items-center text-xs">
                             <span className="text-textSecondary">Risk Segment</span>

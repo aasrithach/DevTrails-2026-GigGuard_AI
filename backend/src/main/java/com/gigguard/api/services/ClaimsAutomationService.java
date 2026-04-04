@@ -52,14 +52,13 @@ public class ClaimsAutomationService {
                 if (disruption.getSeverity() == Severity.HIGH) severityMultiplier = 0.85;
 
                 double incomeLoss = worker.getAvgDailyIncome() * severityMultiplier;
-                double claimAmount = incomeLoss * policy.getCoverageMultiplier();
 
                 Claim claim = Claim.builder()
                         .worker(worker)
                         .policy(policy)
                         .disruption(disruption)
                         .predictedIncomeLoss(incomeLoss)
-                        .claimAmount(claimAmount)
+                        .claimAmount(500.0)
                         .status(ClaimStatus.PENDING)
                         .build();
 
@@ -113,5 +112,23 @@ public class ClaimsAutomationService {
         
         alertService.createAlert(worker, claim.getDisruption().getZone(), AlertType.SYSTEM_WARNING,
                 "Your recent claim was rejected after manual review due to verified fraud flags.");
+    }
+    public void processDisruption(String disruptionType) {
+        Claim claim = new Claim();
+        // Fixed amount 500.0 for the demo as requested
+        claim.setClaimAmount(500.0);
+        claim.setStatus(ClaimStatus.APPROVED);
+        
+        // Link to an active worker for a realistic demo record
+        workerRepository.findAll().stream()
+            .filter(Worker::getIsActive)
+            .findFirst()
+            .ifPresent(worker -> {
+                claim.setWorker(worker);
+                policyRepository.findFirstByWorkerIdAndStatusOrderByCreatedAtDesc(worker.getId(), PolicyStatus.ACTIVE)
+                    .ifPresent(claim::setPolicy);
+            });
+
+        claimRepository.save(claim);
     }
 }

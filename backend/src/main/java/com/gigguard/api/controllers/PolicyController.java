@@ -40,22 +40,26 @@ public class PolicyController {
         Worker worker = workerRepository.findById(userDetails.getId()).orElse(null);
         if (worker == null) return ResponseEntity.status(404).body(ApiResponse.error("Worker not found"));
 
-        Double premium = premiumCalculationService.calculateWeeklyPremium(worker);
-        RiskLevel riskLevel = riskScoreRepository.findFirstByZoneOrderByRecordedAtDesc(worker.getZone())
-                .map(r -> r.getRiskLevel()).orElse(RiskLevel.MEDIUM);
+        // Phase 2 Demo Logic: Simple risk-based premium
+        com.gigguard.api.entities.RiskScore rs = riskScoreRepository.findFirstByZoneOrderByRecordedAtDesc(worker.getZone()).orElse(null);
+        Double finalRiskScore = (rs != null && rs.getRiskScore() != null) ? rs.getRiskScore() : 3.0;
+        RiskLevel riskLevel = (rs != null) ? rs.getRiskLevel() : RiskLevel.MEDIUM;
+        
+        Double weeklyPremium = 100.0 + (finalRiskScore * 10.0);
 
         Policy policy = Policy.builder()
                 .worker(worker)
                 .startDate(LocalDate.now())
                 .endDate(LocalDate.now().plusDays(7))
-                .weeklyPremium(premium)
+                .weeklyPremium(weeklyPremium)
+                .riskScore(finalRiskScore)
                 .riskLevel(riskLevel)
                 .status(PolicyStatus.ACTIVE)
                 .coverageMultiplier(1.0)
                 .build();
 
         policyRepository.save(policy);
-        return ResponseEntity.ok(ApiResponse.success(policy, "Policy created"));
+        return ResponseEntity.ok(ApiResponse.success(policy, "Policy created successfully"));
     }
 
     @GetMapping("/active")
@@ -74,11 +78,14 @@ public class PolicyController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> previewCoverage(@RequestBody Worker mockWorker) {
         mockWorker.setProtectionScore(70); // default
         Double premium = premiumCalculationService.calculateWeeklyPremium(mockWorker);
-        RiskLevel riskLevel = riskScoreRepository.findFirstByZoneOrderByRecordedAtDesc(mockWorker.getZone())
-                .map(r -> r.getRiskLevel()).orElse(RiskLevel.MEDIUM);
+        
+        com.gigguard.api.entities.RiskScore rs = riskScoreRepository.findFirstByZoneOrderByRecordedAtDesc(mockWorker.getZone()).orElse(null);
+        Double finalRiskScore = (rs != null && rs.getRiskScore() != null) ? rs.getRiskScore() : 3.5;
+        RiskLevel riskLevel = (rs != null) ? rs.getRiskLevel() : RiskLevel.MEDIUM;
         
         Map<String, Object> resp = new HashMap<>();
-        resp.put("calculatedPremium", premium);
+        resp.put("weeklyPremium", premium);
+        resp.put("riskScore", finalRiskScore);
         resp.put("riskLevel", riskLevel);
         resp.put("initialProtectionScore", mockWorker.getProtectionScore());
         resp.put("estimatedCoverage", mockWorker.getAvgDailyIncome() * 0.85); // High severity multiplier

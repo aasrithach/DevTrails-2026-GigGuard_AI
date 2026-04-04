@@ -21,8 +21,12 @@ const DemoControlPanel = ({ onRefresh }) => {
     setLoading(true);
     setMessage(null);
     try {
-      await api.post('/demo/disruption', { disruptionType: type, zone: zone });
-      setMessage({ type: 'success', text: `Triggered ${type} in ${zone}` });
+      const response = await api.post('/demo/disruption', { disruptionType: type, zone: zone });
+      const { message, payout } = response.data;
+      
+      const icon = type.includes('RAIN') ? '🌧️' : type.includes('HEAT') ? '🌡️' : '🚗';
+      setMessage({ type: 'success', text: `${icon} ${message} | Claim created | ₹${payout} payout processed` });
+      
       if (onRefresh) onRefresh();
     } catch (err) {
       setMessage({ type: 'error', text: 'Action failed. Check console.' });

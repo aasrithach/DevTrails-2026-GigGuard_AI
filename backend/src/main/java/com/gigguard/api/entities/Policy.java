@@ -25,6 +25,7 @@ public class Policy {
     private LocalDate startDate;
     private LocalDate endDate;
     private Double weeklyPremium;
+    private Double riskScore;
 
     @Enumerated(EnumType.STRING)
     private RiskLevel riskLevel;

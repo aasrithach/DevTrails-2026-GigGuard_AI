@@ -2,7 +2,6 @@ package com.gigguard.api.services;
 
 import com.gigguard.api.entities.RiskScore;
 import com.gigguard.api.entities.Worker;
-import com.gigguard.api.enums.RiskLevel;
 import com.gigguard.api.repositories.RiskScoreRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -18,25 +17,11 @@ public class PremiumCalculationService {
     public Double calculateWeeklyPremium(Worker worker) {
         Optional<RiskScore> riskScoreOpt = riskScoreRepository.findFirstByZoneOrderByRecordedAtDesc(worker.getZone());
         
-        RiskLevel currentRiskLevel = RiskLevel.MEDIUM; // default
-        if (riskScoreOpt.isPresent()) {
-            currentRiskLevel = riskScoreOpt.get().getRiskLevel();
+        Double currentRiskScore = 3.5; // fallback
+        if (riskScoreOpt.isPresent() && riskScoreOpt.get().getRiskScore() != null) {
+            currentRiskScore = riskScoreOpt.get().getRiskScore();
         }
 
-        double basePremium = 35.0; // default MEDIUM
-        
-        if (currentRiskLevel == RiskLevel.LOW) {
-            basePremium = 20.0;
-        } else if (currentRiskLevel == RiskLevel.HIGH) {
-            basePremium = 50.0;
-        }
-
-        if (worker.getProtectionScore() >= 80) {
-            basePremium -= 5.0;
-        } else if (worker.getProtectionScore() < 50) {
-            basePremium += 10.0;
-        }
-
-        return basePremium;
+        return 100.0 + (currentRiskScore * 10.0);
     }
 }

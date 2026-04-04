@@ -1,115 +1,83 @@
 import React, { useEffect, useState } from 'react';
-import { CloudRain, MapPin, Thermometer, TrendingDown, ShieldCheck, CheckCircle2, Wallet, Circle } from 'lucide-react';
+import { CloudRain, CheckCircle2, Wallet, CheckCircle } from 'lucide-react';
 
 const ClaimStepper = ({ claim }) => {
-  // Steps Definition
+  // Steps Definition - Simplified for Demo
   const steps = [
-    { id: 1, title: 'Disruption Detected', icon: CloudRain, description: claim ? `${claim.triggerType || 'Weather'} Event in ${claim.zone}` : 'Waiting for event...' },
-    { id: 2, title: 'GPS Location Verified', icon: MapPin, description: 'Worker confirmed in zone' },
-    { id: 3, title: 'Weather Data Confirmed', icon: Thermometer, description: claim ? `Severity: ${claim.severityLevel || 'Moderate'}` : 'Checking sensors...' },
-    { id: 4, title: 'Activity Drop Verified', icon: TrendingDown, description: claim ? `Impact: ${claim.incomeImpact || 0}% drop` : 'Analyzing activity...' },
-    { id: 5, title: 'Fraud Check Passed', icon: ShieldCheck, description: claim ? `Score: ${claim.fraudScore || 0}/100` : 'Verifying authenticity...' },
-    { id: 6, title: 'Claim Approved', icon: CheckCircle2, description: claim && claim.payoutAmount ? `Amount: ₹${claim.payoutAmount}` : 'Pending approval' },
-    { id: 7, title: 'Payout Processing', icon: Wallet, description: claim && claim.transactionId ? `Tx ID: ${claim.transactionId}` : 'Initiating transfer...' },
+    { id: 1, title: 'Disruption Triggered', icon: CloudRain, description: claim ? `${claim.disruption?.disruptionType || 'Weather'} Event` : 'Event detected' },
+    { id: 2, title: 'Claim Created', icon: CheckCircle2, description: 'Automatic validation passed' },
+    { id: 3, title: 'Payout Processed', icon: Wallet, description: claim && claim.claimAmount ? `₹${claim.claimAmount} settled` : 'Instant settlement' },
   ];
 
   const determineStatus = (stepId, claimStatus) => {
     if (!claimStatus) return 'pending';
     
-    // Status mapping to steps length
-    // PENDING covers steps 1-4
-    // IN_REVIEW covers steps 1-5
-    // APPROVED covers steps 1-6
-    // PAID covers steps 1-7
-    // REJECTED fails at step 5
-    
+    // Status mapping for 3 steps
     let currentStep = 1;
-    if (claimStatus === 'PENDING') currentStep = 4;
-    else if (claimStatus === 'IN_REVIEW') currentStep = 5;
-    else if (claimStatus === 'APPROVED') currentStep = 6;
-    else if (claimStatus === 'PAID') currentStep = 7;
+    if (claimStatus === 'PENDING') currentStep = 2;
+    else if (claimStatus === 'APPROVED' || claimStatus === 'PAID') currentStep = 3;
     else if (claimStatus === 'REJECTED') {
-      if (stepId <= 4) return 'completed';
-      if (stepId === 5) return 'failed';
-      return 'pending';
+      return stepId === 1 ? 'completed' : 'failed';
     }
 
     if (stepId < currentStep) return 'completed';
-    if (stepId === currentStep) return 'active';
+    if (stepId === currentStep) return 'completed'; // For demo, we mark current as completed instantly
     return 'pending';
   };
 
   const [activeSteps, setActiveSteps] = useState([]);
 
   useEffect(() => {
-    // Cascading animation
-    const animateSteps = () => {
-      if (!claim) return;
-      
-      const newActive = [];
-      const interval = setInterval(() => {
-        if (newActive.length < steps.length) {
-          newActive.push(steps[newActive.length].id);
-          setActiveSteps([...newActive]);
-        } else {
-          clearInterval(interval);
-        }
-      }, 500);
-      return () => clearInterval(interval);
-    };
-
-    if (claim && (claim.status === 'APPROVED' || claim.status === 'PAID')) {
-        animateSteps();
-    } else {
-        // Just show instantly for pending/review
-        setActiveSteps(steps.map(s => s.id));
-    }
+    if (!claim) return;
+    
+    // Animate steps for demo impact
+    const newActive = [];
+    const interval = setInterval(() => {
+      if (newActive.length < steps.length) {
+        newActive.push(steps[newActive.length].id);
+        setActiveSteps([...newActive]);
+      } else {
+        clearInterval(interval);
+      }
+    }, 400);
+    return () => clearInterval(interval);
   }, [claim]);
 
+  if (!claim) return null;
+
   return (
-    <div className="w-full">
-      <div className="space-y-4">
+    <div className="w-full bg-slate-900/40 backdrop-blur-sm border border-white/5 rounded-2xl p-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 sm:gap-4 relative">
+        {/* Progress Line (Desktop) */}
+        <div className="absolute top-4 left-4 right-4 h-0.5 bg-slate-800 hidden sm:block z-0"></div>
+        <div className="absolute top-4 left-4 h-0.5 bg-teal-500 hidden sm:block z-0 transition-all duration-1000" 
+             style={{ width: `${claim.status === 'APPROVED' ? 100 : 50}%` }}></div>
+        
         {steps.map((step, index) => {
           const visible = activeSteps.includes(step.id);
           const status = determineStatus(step.id, claim?.status);
-          const isLast = index === steps.length - 1;
           
-          if (!visible) return null;
+          if (!visible) return <div key={step.id} className="flex-1"></div>;
 
           return (
-            <div key={step.id} className="relative flex items-start group animation-slide-up" style={{ animationDelay: `${index * 100}ms` }}>
-              {/* Connector line */}
-              {!isLast && (
-                <div className={`absolute top-8 left-4 w-px h-full -ml-[0.5px] transition-colors duration-500
-                  ${status === 'completed' ? 'bg-primary' : 'bg-border'}`}
-                ></div>
-              )}
-
+            <div key={step.id} className="relative z-10 flex flex-row sm:flex-col items-center gap-4 flex-1 group animate-in fade-in slide-in-from-bottom-2 duration-500">
               {/* Icon Container */}
-              <div className="relative shrink-0 mr-4">
-                <div className={`
-                  w-8 h-8 rounded-full flex items-center justify-center border-2 transition-all duration-300 bg-background
-                  ${status === 'completed' ? 'border-primary text-primary shadow-[0_0_10px_rgba(20,184,166,0.3)]' : 
-                    status === 'active' ? 'border-secondary text-secondary animate-pulse shadow-[0_0_10px_rgba(245,158,11,0.3)]' : 
-                    status === 'failed' ? 'border-danger text-danger' :
-                    'border-border text-textSecondary'}
-                `}>
-                  <step.icon className="w-4 h-4" />
-                </div>
+              <div className={`
+                w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-500 shrink-0
+                ${status === 'completed' ? 'bg-teal-500 border-teal-400 text-white shadow-[0_0_15px_rgba(20,184,166,0.4)]' : 
+                  'bg-slate-800 border-slate-700 text-slate-500'}
+              `}>
+                {status === 'completed' ? <CheckCircle className="w-5 h-5" /> : <step.icon className="w-5 h-5" />}
               </div>
 
               {/* Content */}
-              <div className="flex-1 pb-4 pt-1">
-                <h4 className={`text-sm font-medium transition-colors
-                  ${status === 'completed' ? 'text-textPrimary' : 
-                    status === 'active' ? 'text-secondary' : 
-                    status === 'failed' ? 'text-danger' :
-                    'text-textSecondary'}
+              <div className="text-left sm:text-center">
+                <h4 className={`text-sm font-bold transition-colors duration-300
+                  ${status === 'completed' ? 'text-white' : 'text-slate-500'}
                 `}>
                   {step.title}
-                  {status === 'failed' && ' (Failed)'}
                 </h4>
-                <p className="text-xs text-textSecondary mt-1">{step.description}</p>
+                <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider">{step.description}</p>
               </div>
             </div>
           );

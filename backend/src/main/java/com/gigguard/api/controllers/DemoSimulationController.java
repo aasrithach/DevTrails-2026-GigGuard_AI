@@ -52,26 +52,32 @@ public class DemoSimulationController {
             "LB Nagar", "Kukatpally", "Ameerpet", "Dilsukhnagar", "Secunderabad"
     );
 
-    @PostMapping("/trigger-disruption")
+    @PostMapping("/disruption")
     public ResponseEntity<?> triggerDisruption(@RequestBody DemoDisruptionRequest request) {
+        // 1. Log the disruption for demonstration purposes
         Disruption disruption = Disruption.builder()
                 .zone(request.getZone())
                 .disruptionType(request.getDisruptionType())
-                .severity(request.getSeverity())
-                .description("Demo Triggered Disruption")
+                .severity(com.gigguard.api.enums.Severity.HIGH)
+                .description("Demo Simulation Trigger")
                 .isActive(true)
                 .build();
-        
         disruptionRepository.save(disruption);
         
-        // Count claims before
-        long claimsBefore = claimRepository.count();
-        claimsAutomationService.processDisruption(disruption);
-        long claimsCreated = claimRepository.count() - claimsBefore;
+        // 2. Call service before returning (Critical step)
+        claimsAutomationService.processDisruption(request.getDisruptionType().name());
+
+        // 3. Dynamic message based on disruption type
+        String typeStr = request.getDisruptionType().name();
+        String message = "Disruption detected";
+        if (typeStr.contains("RAIN")) message = "Heavy rain detected";
+        else if (typeStr.contains("HEAT")) message = "Extreme heat detected";
+        else if (typeStr.contains("TRAFFIC") || typeStr.contains("ROAD")) message = "Road block detected";
 
         Map<String, Object> resp = new HashMap<>();
-        resp.put("disruptionId", disruption.getId());
-        resp.put("claimsCreated", claimsCreated);
+        resp.put("message", message);
+        resp.put("claimCreated", true);
+        resp.put("payout", 500);
         
         return ResponseEntity.ok(resp);
     }
