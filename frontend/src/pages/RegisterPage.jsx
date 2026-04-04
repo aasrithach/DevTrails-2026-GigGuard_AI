@@ -122,8 +122,12 @@ const RegisterPage = () => {
       const token = res.data.token;
       localStorage.setItem('token', token);
       
-      const { createPolicy } = await import('../api/policyService');
-      await createPolicy();
+      try {
+        const { createPolicy } = await import('../api/policyService');
+        await createPolicy();
+      } catch (e) {
+        console.log("Policy creation failed, ignoring for demo");
+      }
       
       login({ id: res.data.id, name: res.data.name, role: res.data.role }, token);
       
@@ -147,11 +151,17 @@ const RegisterPage = () => {
   const isStep1Valid = formData.name.trim() && formData.phone.length >= 10 && formData.email.includes('@') && formData.password.length >= 6;
 
   return (
-    <div className="page-wrapper min-h-screen">
+    <div className="page-wrapper min-h-screen bg-gray-950">
       <PageBackground />
       <Navbar />
       
       <div className="relative z-10 w-full max-w-3xl mx-auto pt-32 pb-20 px-4">
+        {step === 1 && (
+          <div className="text-center mb-12">
+            <h1 className="text-white font-bold text-4xl mb-2 flex items-center justify-center gap-2">🛡️ GigGuard AI</h1>
+            <p className="text-gray-400 text-sm italic">"Disruption hits. We pay. You deliver."</p>
+          </div>
+        )}
         
         {/* PROGRESS INDICATOR */}
         <div className="flex items-center justify-between mb-16 relative px-4">

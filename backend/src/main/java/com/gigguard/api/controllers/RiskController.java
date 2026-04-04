@@ -1,70 +1,107 @@
 package com.gigguard.api.controllers;
 
-import com.gigguard.api.dto.ApiResponse;
-import com.gigguard.api.dto.IncomePredictionDTO;
-import com.gigguard.api.services.WeatherMockService;
-import com.gigguard.api.entities.Worker;
-import com.gigguard.api.repositories.WorkerRepository;
-import com.gigguard.api.services.WeatherMockService;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.annotation.PostConstruct;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 
 @RestController
 @RequestMapping("/api/risk")
+@CrossOrigin
 public class RiskController {
 
-    @Autowired
-    private WorkerRepository workerRepository;
+    public static ConcurrentHashMap<String, ZoneRiskData> zoneStore = new ConcurrentHashMap<>();
 
-    @Autowired
-    private WeatherMockService weatherMockService;
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ZoneRiskData {
+        private String zoneName;
+        private int rainfall;
+        private int aqi;
+        private int traffic;
+        private int historicalDisruption;
+        private int riskScore;
+        private String premiumTier;
+        private int weeklyPremium;
+    }
 
-    @GetMapping("/income-prediction/{workerId}")
-    public ResponseEntity<ApiResponse<IncomePredictionDTO>> getIncomePrediction(@PathVariable Long workerId) {
-        Worker worker = workerRepository.findById(workerId).orElse(null);
-        if (worker == null) {
-            return ResponseEntity.status(404).body(ApiResponse.error("Worker not found"));
-        }
+    @PostConstruct
+    public void init() {
+        zoneStore.put("Kondapur", ZoneRiskData.builder().zoneName("Kondapur").rainfall(72).aqi(160).traffic(65).historicalDisruption(7).build());
+        zoneStore.put("Madhapur", ZoneRiskData.builder().zoneName("Madhapur").rainfall(45).aqi(120).traffic(50).historicalDisruption(4).build());
+        zoneStore.put("Gachibowli", ZoneRiskData.builder().zoneName("Gachibowli").rainfall(30).aqi(90).traffic(40).historicalDisruption(2).build());
 
-        // Mock weather prediction
-        com.gigguard.api.services.WeatherMockService.WeatherData forecast = weatherMockService.getWeatherForZone(worker.getZone());
-        Double rainProb = forecast.getRainfallProbability();
+        recompute("Kondapur");
+        recompute("Madhapur");
+        recompute("Gachibowli");
+    }
+
+    private void recompute(String zone) {
+        ZoneRiskData data = zoneStore.get(zone);
+        if (data == null) return;
+
+        // Formula: ((0.40 × rainfall/100.0) + (0.25 × AQI/500.0) + (0.20 × traffic/100.0) + (0.15 × historicalDisruption/10.0)) × 100
+        double score = ((0.40 * data.getRainfall() / 100.0) +
+                        (0.25 * data.getAqi() / 500.0) +
+                        (0.20 * data.getTraffic() / 100.0) +
+                        (0.15 * data.getHistoricalDisruption() / 10.0)) * 100.0;
         
-        String tomorrowRiskLevel = "LOW";
-        if (rainProb > 70) tomorrowRiskLevel = "HIGH";
-        else if (rainProb > 40) tomorrowRiskLevel = "MEDIUM";
+        int riskScore = (int) Math.round(score);
+        if (riskScore < 0) riskScore = 0;
+        if (riskScore > 100) riskScore = 100;
 
-        double riskFactor = 0.0;
-        String recommendation = "Normal working conditions expected tomorrow.";
-        
-        if ("HIGH".equalsIgnoreCase(tomorrowRiskLevel)) {
-            riskFactor = 0.75;
-            recommendation = "High disruption risk. Coverage pre-activated. Avoid peak hours 12PM–4PM.";
-        } else if ("MEDIUM".equalsIgnoreCase(tomorrowRiskLevel)) {
-            riskFactor = 0.40;
-            recommendation = "Moderate disruption possible. Consider starting earlier.";
+        data.setRiskScore(riskScore);
+
+        // Tiering: 0–39 = LOW (₹20), 40–69 = MEDIUM (₹35), 70–100 = HIGH (₹50)
+        if (riskScore < 40) {
+            data.setPremiumTier("LOW");
+            data.setWeeklyPremium(20);
+        } else if (riskScore < 70) {
+            data.setPremiumTier("MEDIUM");
+            data.setWeeklyPremium(35);
         } else {
-            riskFactor = 0.10;
+            data.setPremiumTier("HIGH");
+            data.setWeeklyPremium(50);
         }
+    }
 
-        double predictedIncomeLoss = worker.getAvgDailyIncome() * riskFactor;
-        
-        IncomePredictionDTO dto = IncomePredictionDTO.builder()
-                .workerName(worker.getName())
-                .zone(worker.getZone())
-                .tomorrowRiskLevel(tomorrowRiskLevel)
-                .rainfallProbability(rainProb != null ? rainProb : 0.0)
-                .predictedWorkingHours(8.0 * (1 - riskFactor))
-                .normalWorkingHours(8.0)
-                .predictedIncomeLoss(predictedIncomeLoss)
-                .coverageAmount(predictedIncomeLoss * 0.9) // Arbitrary safe multiplier for test
-                .safetyRecommendation(recommendation)
-                .build();
+    @GetMapping("/zones")
+    public ResponseEntity<List<ZoneRiskData>> getZones() {
+        return ResponseEntity.ok(new ArrayList<>(zoneStore.values()));
+    }
 
-        return ResponseEntity.ok(ApiResponse.success(dto, "Income prediction retrieved successfully"));
+    @GetMapping("/zones/{zone}")
+    public ResponseEntity<ZoneRiskData> getZone(@PathVariable String zone) {
+        ZoneRiskData data = zoneStore.get(zone);
+        if (data == null) return ResponseEntity.notFound().build();
+        return ResponseEntity.ok(data);
+    }
+
+    @PostMapping("/zones/{zone}/spike")
+    public ResponseEntity<ZoneRiskData> spike(@PathVariable String zone) {
+        spikeZoneRisk(zone);
+        ZoneRiskData data = zoneStore.get(zone);
+        if (data == null) return ResponseEntity.notFound().build();
+        return ResponseEntity.ok(data);
+    }
+
+    public void spikeZoneRisk(String zone) {
+        ZoneRiskData data = zoneStore.get(zone);
+        if (data != null) {
+            // Increase rainfall by 20 clamped at 100, increase AQI by 40 clamped at 500
+            data.setRainfall(Math.min(100, data.getRainfall() + 20));
+            data.setAqi(Math.min(500, data.getAqi() + 40));
+            recompute(zone);
+            zoneStore.put(zone, data);
+        }
     }
 }

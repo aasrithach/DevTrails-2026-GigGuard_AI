@@ -13,6 +13,7 @@ import GuidedDemo from '../components/GuidedDemo';
 import ClaimReceiptModal from '../components/ClaimReceiptModal';
 import api from '../api/axios';
 import PageBackground from '../components/ui/PageBackground';
+import ZoneRiskDashboard from '../components/ZoneRiskDashboard';
 
 const AdminDashboard = () => {
   const { user } = useAuth();
@@ -24,6 +25,14 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [demoInProgress, setDemoInProgress] = useState(false);
   const [selectedClaim, setSelectedClaim] = useState(null);
+  const [clockTime, setClockTime] = useState(new Date().toLocaleTimeString());
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setClockTime(new Date().toLocaleTimeString());
+    }, 1000);
+    return () => clearInterval(id);
+  }, []);
 
   const fetchData = async () => {
     try {
@@ -120,7 +129,31 @@ const AdminDashboard = () => {
     <div className="page-wrapper min-h-screen pt-20 px-4 sm:px-6 lg:px-8 pb-12">
       <PageBackground />
       
-      <div className="max-w-[1600px] mx-auto space-y-6 relative z-10">
+      {/* BRANDED HEADER */}
+      <div className="bg-gray-900 border-b border-gray-700 px-6 py-4 flex items-center justify-between sticky top-0 z-50">
+        <div className="flex flex-col">
+          <span className="text-white font-bold text-xl flex items-center gap-2">🛡️ GigGuard AI</span>
+          <span className="text-gray-400 text-xs uppercase tracking-widest font-bold">Operations Center</span>
+        </div>
+        <div className="flex items-center gap-4">
+          <span className="text-emerald-400 font-mono text-sm bg-emerald-950/30 px-3 py-1 rounded-md border border-emerald-500/20">{clockTime}</span>
+        </div>
+      </div>
+
+      {/* SYSTEM STATUS BAR */}
+      <div className="bg-gray-800 px-6 py-2 flex items-center gap-4 border-b border-white/5">
+        <span className="flex items-center gap-1 text-[10px] px-3 py-1 rounded-full bg-emerald-900/30 text-emerald-400 font-bold uppercase tracking-wider border border-emerald-500/20">
+          <span className="animate-pulse">●</span> System Online
+        </span>
+        <span className="flex items-center gap-1 text-[10px] px-3 py-1 rounded-full bg-emerald-900/30 text-emerald-400 font-bold uppercase tracking-wider border border-emerald-500/20">
+          <span className="animate-pulse">●</span> H2 Database Active
+        </span>
+        <span className="flex items-center gap-1 text-[10px] px-3 py-1 rounded-full bg-amber-900/30 text-amber-400 font-bold uppercase tracking-wider border border-amber-500/20">
+          <span className="animate-pulse">●</span> Demo Mode
+        </span>
+      </div>
+
+      <div className="max-w-[1600px] mx-auto space-y-6 relative z-10 p-6">
         
         {/* DEMO BANNER */}
         {demoInProgress && (
@@ -160,6 +193,9 @@ const AdminDashboard = () => {
             </div>
           </div>
         </div>
+
+        {/* ZONE RISK DASHBOARD */}
+        <ZoneRiskDashboard />
 
         {/* TOP ROW — 6 KPI Tiles */}
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">

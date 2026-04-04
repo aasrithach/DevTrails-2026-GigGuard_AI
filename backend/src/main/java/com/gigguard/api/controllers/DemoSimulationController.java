@@ -3,9 +3,8 @@ package com.gigguard.api.controllers;
 import com.gigguard.api.dto.ApiResponse;
 import com.gigguard.api.dto.DemoDisruptionRequest;
 import com.gigguard.api.dto.WeatherOverrideRequest;
-import com.gigguard.api.entities.Disruption;
-import com.gigguard.api.entities.RiskScore;
-import com.gigguard.api.enums.ClaimStatus;
+import com.gigguard.api.entities.*;
+import com.gigguard.api.enums.*;
 import com.gigguard.api.repositories.*;
 import com.gigguard.api.services.ClaimsAutomationService;
 import com.gigguard.api.services.RiskAssessmentService;
@@ -46,6 +45,9 @@ public class DemoSimulationController {
 
     @Autowired
     private PayoutRepository payoutRepository;
+
+    @Autowired
+    private RiskController riskController;
 
     private final List<String> ZONES = Arrays.asList(
             "Kondapur", "Miyapur", "Hitech City", "Gachibowli", "Madhapur",
@@ -148,5 +150,95 @@ public class DemoSimulationController {
         }
 
         return ResponseEntity.ok(summaries);
+    }
+
+    @PostMapping("/simulate-claims")
+    public ResponseEntity<?> simulateClaims(@RequestBody DemoDisruptionRequest request) {
+        String zone = request.getZone();
+        riskController.spikeZoneRisk(zone);
+        double multiplier = 0.55; // Default MEDIUM
+        
+        if (request.getSeverity() != null) {
+            switch (request.getSeverity()) {
+                case LOW: multiplier = 0.25; break;
+                case MEDIUM: multiplier = 0.55; break;
+                case HIGH: multiplier = 0.85; break;
+            }
+        }
+
+        List<Worker> workers = workerRepository.findByZoneAndIsActiveTrue(zone);
+        List<Map<String, Object>> createdClaims = new ArrayList<>();
+        double totalPayout = 0;
+
+        for (Worker worker : workers) {
+            double predictedLoss = Math.round((worker.getAvgDailyIncome() * multiplier) * 100.0) / 100.0;
+            
+            // --- Simple Fraud Detection Rules ---
+            int fraudScore = 0;
+            List<String> reasons = new ArrayList<>();
+            
+            // 1. New Account check (< 7 days)
+            if (worker.getCreatedAt() != null && worker.getCreatedAt().isAfter(LocalDateTime.now().minusDays(7))) {
+                fraudScore += 25;
+                reasons.add("NEW_ACCOUNT");
+            }
+            
+            // 2. High Frequency check (same worker, last 24h)
+            long recentClaims = claimRepository.countByWorkerIdAndCreatedAtAfter(worker.getId(), LocalDateTime.now().minusHours(24));
+            if (recentClaims >= 1) {
+                fraudScore += 50;
+                reasons.add("HIGH_FREQUENCY_ACTIVITY");
+            }
+            
+            // 3. Random Jitter (0-15)
+            int jitter = new Random().nextInt(16);
+            fraudScore += jitter;
+            
+            // --- Status Mapping ---
+            ClaimStatus finalStatus = ClaimStatus.APPROVED;
+            if (fraudScore >= 80) finalStatus = ClaimStatus.REJECTED;
+            else if (fraudScore >= 60) finalStatus = ClaimStatus.FLAGGED;
+
+            // Find active policy 
+            Policy policy = policyRepository
+                .findFirstByWorkerIdAndStatusOrderByCreatedAtDesc(worker.getId(), PolicyStatus.ACTIVE)
+                .orElse(null);
+
+            Claim claim = Claim.builder()
+                .worker(worker)
+                .policy(policy)
+                .predictedIncomeLoss(predictedLoss)
+                .claimAmount(predictedLoss)
+                .status(finalStatus)
+                .fraudScore(fraudScore)
+                .gpsVerified(true)
+                .weatherVerified(true)
+                .activityDropVerified(true)
+                .createdAt(LocalDateTime.now())
+                .build();
+            
+            claimRepository.save(claim);
+            if (finalStatus == ClaimStatus.APPROVED) {
+                totalPayout += predictedLoss;
+            }
+
+            Map<String, Object> cMap = new HashMap<>();
+            cMap.put("workerName", worker.getName());
+            cMap.put("predictedIncomeLoss", predictedLoss);
+            cMap.put("status", finalStatus.name());
+            cMap.put("fraudScore", fraudScore);
+            cMap.put("fraudReason", String.join(", ", reasons));
+            createdClaims.add(cMap);
+        }
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("zone", zone);
+        response.put("disruptionType", request.getDisruptionType());
+        response.put("severity", request.getSeverity());
+        response.put("totalClaims", createdClaims.size());
+        response.put("totalPayout", Math.round(totalPayout * 100.0) / 100.0);
+        response.put("claims", createdClaims);
+
+        return ResponseEntity.ok(response);
     }
 }

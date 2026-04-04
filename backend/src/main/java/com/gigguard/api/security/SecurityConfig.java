@@ -6,6 +6,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -49,11 +50,11 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http.cors(cors -> cors.disable()) // Handled by GlobalCorsConfig
+        http.cors(Customizer.withDefaults()) // Uses GlobalCorsConfig
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> 
-                        auth.requestMatchers("/api/auth/**", "/api/demo/**", "/api/public/**").permitAll()
+                        auth.requestMatchers("/api/auth/**", "/api/demo/**", "/api/public/**", "/api/risk/**").permitAll()
                             .requestMatchers("/api/admin/**").hasRole("ADMIN")
                             .requestMatchers("/api/workers/**", "/api/policies/**", "/api/claims/**", "/api/alerts/**").authenticated()
                             .anyRequest().authenticated()

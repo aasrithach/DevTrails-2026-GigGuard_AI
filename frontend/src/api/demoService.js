@@ -5,3 +5,4 @@ export const resolveDisruption = (id) => api.post(`/demo/resolve-disruption/${id
 export const setWeather = (data) => api.post('/demo/set-weather', data);
 export const resetDemo = () => api.post('/demo/reset');
 export const getZoneSummary = () => api.get('/demo/zone-summary');
+export const simulateClaims = (data) => api.post('/demo/simulate-claims', data);

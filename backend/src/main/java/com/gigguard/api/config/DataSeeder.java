@@ -60,7 +60,7 @@ public class DataSeeder {
 
         // 10 Workers
         List<Worker> workers = Arrays.asList(
-                Worker.builder().name("Ravi Kumar").phone("9876543210").email("ravi@example.com").passwordHash(defaultPass).platform(Platform.ZEPTO).zone("Kondapur").avgDailyIncome(900.0).protectionScore(82).build(),
+                Worker.builder().name("Ravi Kumar").phone("9876543210").email("ravi@example.com").passwordHash(defaultPass).platform(Platform.ZEPTO).zone("Kondapur").avgDailyIncome(900.0).protectionScore(82).createdAt(LocalDateTime.now().minusDays(3)).build(),
                 Worker.builder().name("Priya Singh").phone("9876543211").email("priya@example.com").passwordHash(defaultPass).platform(Platform.BLINKIT).zone("Miyapur").avgDailyIncome(750.0).protectionScore(71).build(),
                 Worker.builder().name("Mohammed Ali").phone("9876543212").email("ali@example.com").passwordHash(defaultPass).platform(Platform.SWIGGY_INSTAMART).zone("LB Nagar").avgDailyIncome(820.0).protectionScore(65).build(),
                 Worker.builder().name("Sunita Devi").phone("9876543213").email("sunita@example.com").passwordHash(defaultPass).platform(Platform.ZOMATO).zone("Hitech City").avgDailyIncome(1100.0).protectionScore(88).build(),
@@ -69,9 +69,26 @@ public class DataSeeder {
                 Worker.builder().name("Venkat Rao").phone("9876543216").email("venkat@example.com").passwordHash(defaultPass).platform(Platform.BLINKIT).zone("Ameerpet").avgDailyIncome(760.0).protectionScore(77).build(),
                 Worker.builder().name("Deepa Nair").phone("9876543217").email("deepa@example.com").passwordHash(defaultPass).platform(Platform.SWIGGY_INSTAMART).zone("Dilsukhnagar").avgDailyIncome(840.0).protectionScore(63).build(),
                 Worker.builder().name("Arjun Sharma").phone("9876543218").email("arjun@example.com").passwordHash(defaultPass).platform(Platform.ZOMATO).zone("Secunderabad").avgDailyIncome(920.0).protectionScore(85).build(),
-                Worker.builder().name("Fatima Begum").phone("9876543219").email("fatima@example.com").passwordHash(defaultPass).platform(Platform.AMAZON).zone("Madhapur").avgDailyIncome(780.0).protectionScore(70).build()
+                Worker.builder().name("Fatima Begum").phone("9876543219").email("fatima@example.com").passwordHash(defaultPass).platform(Platform.AMAZON).zone("Madhapur").avgDailyIncome(780.0).protectionScore(70).build(),
+                Worker.builder().name("Suresh Raina").phone("9876543220").email("suresh@example.com").passwordHash(defaultPass).platform(Platform.ZEPTO).zone("Kondapur").avgDailyIncome(900.0).protectionScore(75).createdAt(LocalDateTime.now().minusDays(3)).build(),
+                Worker.builder().name("Meena Kumari").phone("9876543221").email("meena@example.com").passwordHash(defaultPass).platform(Platform.ZEPTO).zone("Kondapur").avgDailyIncome(900.0).protectionScore(79).createdAt(LocalDateTime.now().minusDays(30)).build(),
+                Worker.builder().name("Rajesh Khana").phone("9876543222").email("rajesh@example.com").passwordHash(defaultPass).platform(Platform.ZEPTO).zone("Madhapur").avgDailyIncome(900.0).protectionScore(75).createdAt(LocalDateTime.now().minusDays(30)).build(),
+                Worker.builder().name("Sita Ram").phone("9876543223").email("sita@example.com").passwordHash(defaultPass).platform(Platform.ZEPTO).zone("Gachibowli").avgDailyIncome(900.0).protectionScore(75).createdAt(LocalDateTime.now().minusDays(30)).build()
         );
         workerRepository.saveAll(workers);
+
+        // Pre-seed claim for Suresh Raina (High frequency demo)
+        Worker suresh = workers.stream().filter(w -> w.getPhone().equals("9876543220")).findFirst().orElse(null);
+        if (suresh != null) {
+            Claim c = Claim.builder()
+                .worker(suresh)
+                .claimAmount(500.0)
+                .status(ClaimStatus.APPROVED)
+                .fraudScore(0)
+                .createdAt(LocalDateTime.now().minusHours(2))
+                .build();
+            claimRepository.save(c);
+        }
 
         // Policies for workers
         for (Worker w : workers) {
